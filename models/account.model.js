@@ -67,11 +67,43 @@ async function getAll() {
   return rows;
 }
 
+async function updateRefreshToken(accountId, token) {
+  await db.query(
+    `INSERT INTO refreshTokens (accountId, token, expires)
+     VALUES (?, ?, ?)`,
+    [accountId, token, new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)]
+  );
+}
+
+async function findRefreshToken(token) {
+  const [rows] = await db.query(
+    `SELECT rt.*, a.id AS accountId, a.title, a.firstName, a.lastName, a.email, a.role, a.verified
+     FROM refreshTokens rt
+     JOIN accounts a ON a.id = rt.accountId
+     WHERE rt.token = ?`,
+    [token]
+  );
+
+  return rows[0];
+}
+
+async function revokeRefreshToken(token, replacedByToken = null) {
+  await db.query(
+    `UPDATE refreshTokens
+     SET revoked = NOW(), replacedByToken = ?
+     WHERE token = ?`,
+    [replacedByToken, token]
+  );
+}
+
 module.exports = {
   create,
   findByEmail,
   findById,
   findByVerificationToken,
   markVerified,
-  getAll
+  getAll,
+  updateRefreshToken,
+  findRefreshToken,
+  revokeRefreshToken
 };
