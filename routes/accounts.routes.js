@@ -4,6 +4,7 @@ const crypto = require('crypto');
 
 const accountModel = require('../models/account.model');
 const sendEmail = require('../helpers/send-email');
+const authorize = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -11,15 +12,24 @@ function generateRefreshToken() {
   return crypto.randomBytes(40).toString('hex');
 }
 
+function generateJwtToken(account) {
+  return require('jsonwebtoken').sign(
+    { id: account.id, role: account.role },
+    process.env.JWT_SECRET,
+    { expiresIn: '15m' }
+  );
+}
+
 function basicDetails(account) {
   return {
-    id: account.accountId || account.id,
+    id: account.id,
     title: account.title,
     firstName: account.firstName,
     lastName: account.lastName,
     email: account.email,
     role: account.role,
-    verified: account.verified
+    verified: account.verified,
+    jwtToken: generateJwtToken(account)
   };
 }
 
@@ -152,7 +162,10 @@ router.post('/refresh-token', async (req, res, next) => {
       expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
     });
 
-    res.json(basicDetails(tokenRecord));
+    res.json(basicDetails({
+      ...tokenRecord,
+      id: tokenRecord.accountId
+    }));
   } catch (error) {
     next(error);
   }
@@ -171,6 +184,193 @@ router.post('/revoke-token', async (req, res, next) => {
     res.clearCookie('refreshToken');
 
     res.json({ message: 'Token revoked' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/', authorize('Admin'), async (req, res, next) => {
+  try {
+    const accounts = await accountModel.getAll();
+    res.json(accounts);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get('/:id', authorize(), async (req, res, next) => {
+  try {
+    const id = req.params.id === 'me' ? req.account.id : Number(req.params.id);
+
+    if (req.account.id !== id && req.account.role !== 'Admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const account = await accountModel.findById(id);
+
+    if (!account) {
+      return res.status(404).json({ message: 'Account not found' });
+    }
+
+    res.json(basicDetails(account));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/', authorize('Admin'), async (req, res, next) => {
+  try {
+    const { title, firstName, lastName, email, password, role } = req.body;
+
+    if (!title || !firstName || !lastName || !email || !password || !role) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    const existingAccount = await accountModel.findByEmail(email);
+
+    if (existingAccount) {
+      return res.status(400).json({ message: `Email ${email} is already registered` });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await accountModel.create({
+      title,
+      firstName,
+      lastName,
+      email,
+      passwordHash,
+      role,
+      verificationToken: null
+    });
+
+    const createdAccount = await accountModel.findByEmail(email);
+    await accountModel.markVerified(createdAccount.id);
+
+    res.json({ message: 'Account created successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put('/:id', authorize(), async (req, res, next) => {
+  try {
+    const id = req.params.id === 'me' ? req.account.id : Number(req.params.id);
+
+    if (req.account.id !== id && req.account.role !== 'Admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const params = { ...req.body };
+
+    delete params.confirmPassword;
+    delete params.jwtToken;
+
+    if (params.password) {
+      params.passwordHash = await bcrypt.hash(params.password, 10);
+    }
+
+    delete params.password;
+
+    if (req.account.role !== 'Admin') {
+      delete params.role;
+    }
+
+    await accountModel.update(id, params);
+
+    const updatedAccount = await accountModel.findById(id);
+
+    res.json(basicDetails(updatedAccount));
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.delete('/:id', authorize(), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+
+    if (req.account.id !== id && req.account.role !== 'Admin') {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    await accountModel.remove(id);
+
+    res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const account = await accountModel.findByEmail(email);
+
+    if (account) {
+      const resetToken = crypto.randomBytes(40).toString('hex');
+      const resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await accountModel.saveResetToken(account.id, resetToken, resetTokenExpires);
+
+      const resetUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/reset-password?token=${resetToken}`;
+
+      await sendEmail({
+        to: account.email,
+        subject: 'Reset your password',
+        html: `
+          <p>Hello ${account.firstName},</p>
+          <p>Please reset your password by clicking the link below:</p>
+          <p><a href="${resetUrl}">Reset Password</a></p>
+        `
+      });
+    }
+
+    res.json({
+      message: 'Please check your email for password reset instructions'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/validate-reset-token', async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    const account = await accountModel.findByResetToken(token);
+
+    if (!account) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    res.json({ message: 'Token is valid' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+
+    const account = await accountModel.findByResetToken(token);
+
+    if (!account) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await accountModel.update(account.id, {
+      passwordHash,
+      verified: new Date()
+    });
+
+    await accountModel.clearResetToken(account.id);
+
+    res.json({ message: 'Password reset successful, you can now login' });
   } catch (error) {
     next(error);
   }

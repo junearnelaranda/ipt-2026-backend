@@ -96,6 +96,63 @@ async function revokeRefreshToken(token, replacedByToken = null) {
   );
 }
 
+async function update(id, params) {
+  const fields = [];
+  const values = [];
+
+  for (const [key, value] of Object.entries(params)) {
+    fields.push(`${key} = ?`);
+    values.push(value);
+  }
+
+  if (!fields.length) {
+    return;
+  }
+
+  values.push(id);
+
+  await db.query(
+    `UPDATE accounts SET ${fields.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+async function remove(id) {
+  await db.query(
+    'DELETE FROM accounts WHERE id = ?',
+    [id]
+  );
+}
+
+async function findByResetToken(token) {
+  const [rows] = await db.query(
+    `SELECT * FROM accounts
+     WHERE resetToken = ?
+     AND resetTokenExpires > NOW()`,
+    [token]
+  );
+
+  return rows[0];
+}
+
+async function saveResetToken(id, resetToken, resetTokenExpires) {
+  await db.query(
+    `UPDATE accounts
+     SET resetToken = ?, resetTokenExpires = ?
+     WHERE id = ?`,
+    [resetToken, resetTokenExpires, id]
+  );
+}
+
+async function clearResetToken(id) {
+  await db.query(
+    `UPDATE accounts
+     SET resetToken = NULL, resetTokenExpires = NULL
+     WHERE id = ?`,
+    [id]
+  );
+}
+
 module.exports = {
   create,
   findByEmail,
@@ -105,5 +162,10 @@ module.exports = {
   getAll,
   updateRefreshToken,
   findRefreshToken,
-  revokeRefreshToken
+  revokeRefreshToken,
+  update,
+  remove,
+  findByResetToken,
+  saveResetToken,
+  clearResetToken
 };
