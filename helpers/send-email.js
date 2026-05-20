@@ -2,6 +2,17 @@ const nodemailer = require('nodemailer');
 
 async function sendEmail({ to, subject, html }) {
   const port = Number(process.env.SMTP_PORT || 587);
+  const hasSmtpConfig = process.env.SMTP_HOST
+    && process.env.SMTP_USER
+    && process.env.SMTP_PASS
+    && process.env.EMAIL_FROM;
+
+  if (!hasSmtpConfig) {
+    console.log('Email skipped: SMTP settings are not configured');
+    console.log('Email to:', to);
+    console.log('Email subject:', subject);
+    return null;
+  }
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
