@@ -11,10 +11,10 @@ const accountsRoutes = require('./routes/accounts.routes');
 const app = express();
 
 const port = process.env.PORT || 4000;
-const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
 app.use(cors({
-  origin: corsOrigin,
+  // This MUST be your exact Render URL
+  origin: 'https://ipt-2026-frontend-3nao.onrender.com',
   credentials: true
 }));
 
@@ -42,9 +42,12 @@ app.get('/health/db', async (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({
-    message: 'Internal server error'
+  console.error('--- ERROR START ---');
+  console.error(err.stack);
+  console.error('--- ERROR END ---');
+  
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error'
   });
 });
 
