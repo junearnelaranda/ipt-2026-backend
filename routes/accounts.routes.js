@@ -578,6 +578,96 @@ router.get('/', authorize('Admin'), async (req, res, next) => {
   }
 });
 
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const account = await accountModel.findByEmail(email);
+
+    if (account) {
+      const resetToken = crypto.randomBytes(40).toString('hex');
+      const resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+      await accountModel.saveResetToken(account.id, resetToken, resetTokenExpires);
+
+      const resetUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/reset-password?token=${resetToken}`;
+
+      await sendEmail({
+        to: account.email,
+        subject: 'Reset your password',
+        html: `
+          <p>Hello ${account.firstName},</p>
+          <p>Please reset your password by clicking the link below:</p>
+          <p><a href="${resetUrl}">Reset Password</a></p>
+        `
+      });
+    }
+
+    return res.json({
+      message: 'Please check your email for password reset instructions'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/validate-reset-token', async (req, res, next) => {
+  try {
+    const { token } = req.body;
+    const tokenInfo = token
+      ? `${String(token).slice(0, 6)}... (${String(token).length} chars)`
+      : 'missing';
+
+    console.log('Validate reset token request received:', tokenInfo);
+
+    if (!token) {
+      console.log('Validate reset token result: token missing');
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    const account = await accountModel.findByResetToken(token);
+
+    console.log('Validate reset token result: account found =', Boolean(account));
+
+    if (!account) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    return res.json({ message: 'Token is valid' });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    const account = await accountModel.findByResetToken(token);
+
+    if (!account) {
+      return res.status(400).json({ message: 'Invalid token' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    await accountModel.update(account.id, {
+      passwordHash,
+      verified: new Date()
+    });
+
+    await accountModel.clearResetToken(account.id);
+
+    return res.json({ message: 'Password reset successful, you can now login' });
+  } catch (error) {
+    next(error);
+  }
+});
+
 router.get('/:id', authorize(), async (req, res, next) => {
   try {
     const id = req.params.id === 'me' ? req.account.id : Number(req.params.id);
@@ -677,80 +767,6 @@ router.delete('/:id', authorize(), async (req, res, next) => {
     await accountModel.remove(id);
 
     res.json({ message: 'Account deleted successfully' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/forgot-password', async (req, res, next) => {
-  try {
-    const { email } = req.body;
-
-    const account = await accountModel.findByEmail(email);
-
-    if (account) {
-      const resetToken = crypto.randomBytes(40).toString('hex');
-      const resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
-      await accountModel.saveResetToken(account.id, resetToken, resetTokenExpires);
-
-      const resetUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/reset-password?token=${resetToken}`;
-
-      await sendEmail({
-        to: account.email,
-        subject: 'Reset your password',
-        html: `
-          <p>Hello ${account.firstName},</p>
-          <p>Please reset your password by clicking the link below:</p>
-          <p><a href="${resetUrl}">Reset Password</a></p>
-        `
-      });
-    }
-
-    res.json({
-      message: 'Please check your email for password reset instructions'
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/validate-reset-token', async (req, res, next) => {
-  try {
-    const { token } = req.body;
-
-    const account = await accountModel.findByResetToken(token);
-
-    if (!account) {
-      return res.status(400).json({ message: 'Invalid token' });
-    }
-
-    res.json({ message: 'Token is valid' });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.post('/reset-password', async (req, res, next) => {
-  try {
-    const { token, password } = req.body;
-
-    const account = await accountModel.findByResetToken(token);
-
-    if (!account) {
-      return res.status(400).json({ message: 'Invalid token' });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    await accountModel.update(account.id, {
-      passwordHash,
-      verified: new Date()
-    });
-
-    await accountModel.clearResetToken(account.id);
-
-    res.json({ message: 'Password reset successful, you can now login' });
   } catch (error) {
     next(error);
   }

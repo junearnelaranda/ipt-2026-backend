@@ -52,10 +52,14 @@ app.get('/health/db', async (req, res, next) => {
 });
 
 app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    return next(err);
+  }
+
   console.error('--- ERROR START ---');
-  console.error(err.stack);
+  console.error(err.stack || err);
   console.error('--- ERROR END ---');
-  
+
   res.status(err.status || 500).json({
     message: err.message || 'Internal server error'
   });
