@@ -6,6 +6,150 @@ const accountModel = require('../models/account.model');
 const sendEmail = require('../helpers/send-email');
 const authorize = require('../middleware/auth');
 
+/**
+ * @swagger
+ * tags:
+ *   name: Accounts
+ *   description: Account authentication and management
+ */
+
+/**
+ * @swagger
+ * /accounts/authenticate:
+ *   post:
+ *     summary: Authenticate account credentials and return a JWT token
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@example.com
+ *               password:
+ *                 type: string
+ *                 example: admin123
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *       400:
+ *         description: Email or password is incorrect
+ */
+
+/**
+ * @swagger
+ * /accounts/register:
+ *   post:
+ *     summary: Register a new user account
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, firstName, lastName, email, password]
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Mr
+ *               firstName:
+ *                 type: string
+ *                 example: Admin
+ *               lastName:
+ *                 type: string
+ *                 example: User
+ *               email:
+ *                 type: string
+ *                 example: admin@example.com
+ *               password:
+ *                 type: string
+ *                 example: admin123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: admin123
+ *               acceptTerms:
+ *                 type: boolean
+ *                 example: true
+ *     responses:
+ *       200:
+ *         description: Registration successful
+ *       400:
+ *         description: Invalid registration request
+ */
+
+/**
+ * @swagger
+ * /accounts/verify-email:
+ *   post:
+ *     summary: Verify a new account with a verification token
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Verification successful
+ *       400:
+ *         description: Verification failed
+ */
+
+/**
+ * @swagger
+ * /accounts/refresh-token:
+ *   post:
+ *     summary: Use a refresh token to generate a new JWT token
+ *     tags: [Accounts]
+ *     responses:
+ *       200:
+ *         description: Refresh successful
+ *       401:
+ *         description: Unauthorized
+ */
+
+/**
+ * @swagger
+ * /accounts/revoke-token:
+ *   post:
+ *     summary: Revoke a refresh token
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token revoked
+ *       400:
+ *         description: Token is required
+ */
+
+/**
+ * @swagger
+ * /accounts:
+ *   get:
+ *     summary: Get all accounts Admin only
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of accounts
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
 const router = express.Router();
 
 function generateRefreshToken() {
