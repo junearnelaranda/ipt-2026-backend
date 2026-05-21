@@ -403,7 +403,12 @@ router.post('/register', async (req, res, next) => {
     const existingAccount = await accountModel.findByEmail(email);
 
     if (existingAccount) {
-      return res.status(400).json({ message: `Email ${email} is already registered` });
+      if (existingAccount.verified) {
+        return res.status(400).json({ message: `Email ${email} is already registered` });
+      }
+
+      await accountModel.remove(existingAccount.id);
+      console.log('Removed unverified account before retrying registration for:', email);
     }
 
     const isFirstAccount = (await accountModel.getAll()).length === 0;
@@ -412,7 +417,7 @@ router.post('/register', async (req, res, next) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(40).toString('hex');
 
-    await accountModel.create({
+    const accountId = await accountModel.create({
       title,
       firstName,
       lastName,
@@ -441,6 +446,9 @@ router.post('/register', async (req, res, next) => {
     } catch (emailError) {
       console.error('Failed to send verification email to:', email);
       console.error(emailError.message);
+
+      await accountModel.remove(accountId);
+      console.log('Removed unverified account after failed verification email for:', email);
 
       return res.status(500).json({
         message: emailError.message || 'Failed to send verification email'
