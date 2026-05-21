@@ -11,9 +11,20 @@ const accountsRoutes = require('./routes/accounts.routes');
 const app = express();
 
 const port = process.env.PORT || 4000;
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  'http://localhost:4200',
+  'https://ipt-2026-frontend-3nao.onrender.com'
+].filter(Boolean);
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`CORS blocked origin: ${origin}`));
+  },
   credentials: true
 }));
 
