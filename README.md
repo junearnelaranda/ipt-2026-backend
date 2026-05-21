@@ -56,6 +56,23 @@ http://localhost:4000/api-docs
 
 See `.env.example`.
 
+## Email Setup
+
+This project sends verification and password reset emails with Resend.
+
+Required variables:
+
+```env
+RESEND_API_KEY=your_resend_api_key
+EMAIL_FROM=no-reply@your-verified-domain.com
+FRONTEND_URL=https://your-frontend-url
+CORS_ORIGIN=https://your-frontend-url
+```
+
+The backend sends verification email to the same email address used during registration. It does not redirect messages to a personal Gmail address and does not hardcode recipients.
+
+Resend testing mode only allows sending to your own verified/test email. To send verification emails to arbitrary users, verify a sending domain in Resend, then set `EMAIL_FROM` to an address on that domain, for example `no-reply@myverifieddomain.com`.
+
 ## Notes
 
 - Do not commit `.env`.
