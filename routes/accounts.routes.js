@@ -150,6 +150,221 @@ const authorize = require('../middleware/auth');
  *         description: Forbidden
  */
 
+/**
+ * @swagger
+ * /accounts/forgot-password:
+ *   post:
+ *     summary: Submit email address to reset the password on your account
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: admin@example.com
+ *     responses:
+ *       200:
+ *         description: Password reset email sent if account exists
+ */
+
+/**
+ * @swagger
+ * /accounts/validate-reset-token:
+ *   post:
+ *     summary: Validate the reset password token received in email
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token]
+ *             properties:
+ *               token:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *       400:
+ *         description: Invalid token
+ */
+
+/**
+ * @swagger
+ * /accounts/reset-password:
+ *   post:
+ *     summary: Reset the password for an account
+ *     tags: [Accounts]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password, confirmPassword]
+ *             properties:
+ *               token:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 example: admin123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: admin123
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid token
+ */
+
+/**
+ * @swagger
+ * /accounts:
+ *   post:
+ *     summary: Create a new account Admin only
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title, firstName, lastName, email, password, role]
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Ms
+ *               firstName:
+ *                 type: string
+ *                 example: Jane
+ *               lastName:
+ *                 type: string
+ *                 example: User
+ *               email:
+ *                 type: string
+ *                 example: jane@example.com
+ *               password:
+ *                 type: string
+ *                 example: user123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: user123
+ *               role:
+ *                 type: string
+ *                 enum: [Admin, User]
+ *                 example: User
+ *     responses:
+ *       200:
+ *         description: Account created successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
+/**
+ * @swagger
+ * /accounts/{id}:
+ *   get:
+ *     summary: Get a single account by ID
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           oneOf:
+ *             - type: integer
+ *             - type: string
+ *         example: me
+ *     responses:
+ *       200:
+ *         description: Account found
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Account not found
+ *   put:
+ *     summary: Update an account
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           oneOf:
+ *             - type: integer
+ *             - type: string
+ *         example: me
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Mr
+ *               firstName:
+ *                 type: string
+ *                 example: Updated
+ *               lastName:
+ *                 type: string
+ *                 example: User
+ *               password:
+ *                 type: string
+ *                 example: newpass123
+ *               confirmPassword:
+ *                 type: string
+ *                 example: newpass123
+ *               role:
+ *                 type: string
+ *                 enum: [Admin, User]
+ *                 example: User
+ *     responses:
+ *       200:
+ *         description: Account updated
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *   delete:
+ *     summary: Delete an account
+ *     tags: [Accounts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         example: 2
+ *     responses:
+ *       200:
+ *         description: Account deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+
 const router = express.Router();
 
 function generateRefreshToken() {
