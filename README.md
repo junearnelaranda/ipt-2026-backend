@@ -64,14 +64,15 @@ Required variables:
 
 ```env
 RESEND_API_KEY=your_resend_api_key
-EMAIL_FROM=no-reply@your-verified-domain.com
+EMAIL_FROM=onboarding@resend.dev
+EMAIL_REDIRECT_TO=junearnel09@gmail.com
 FRONTEND_URL=https://your-frontend-url
 CORS_ORIGIN=https://your-frontend-url
 ```
 
-The backend sends verification email to the same email address used during registration. It does not redirect messages to a personal Gmail address and does not hardcode recipients.
+For demo mode with Resend testing, set `EMAIL_REDIRECT_TO` to your verified Resend inbox. The account is still saved with the email typed during registration, but the actual email is delivered to the redirect inbox and includes the original intended recipient.
 
-Resend testing mode only allows sending to your own verified/test email. To send verification emails to arbitrary users, verify a sending domain in Resend, then set `EMAIL_FROM` to an address on that domain, for example `no-reply@myverifieddomain.com`.
+For production, remove `EMAIL_REDIRECT_TO`. Resend testing mode only allows sending to your own verified/test email. To send verification emails to arbitrary users, verify a sending domain in Resend, then set `EMAIL_FROM` to an address on that domain, for example `no-reply@myverifieddomain.com`.
 
 ## Notes
 

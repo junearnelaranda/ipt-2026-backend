@@ -30,13 +30,23 @@ async function sendEmail({ to, subject, html }) {
   }
 
   const resend = new Resend(process.env.RESEND_API_KEY);
+  const redirectTo = process.env.EMAIL_REDIRECT_TO;
+  const finalTo = redirectTo || to;
+  const finalHtml = redirectTo
+    ? `
+      <p><strong>Demo Email Redirect:</strong></p>
+      <p>This email was originally intended for: <strong>${to}</strong></p>
+      <hr>
+      ${html}
+    `
+    : html;
 
   const { data, error } = await withTimeout(
     resend.emails.send({
       from: process.env.EMAIL_FROM,
-      to,
+      to: finalTo,
       subject,
-      html
+      html: finalHtml
     }),
     EMAIL_TIMEOUT_MS
   );
