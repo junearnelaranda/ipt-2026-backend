@@ -424,15 +424,28 @@ router.post('/register', async (req, res, next) => {
 
     const verifyUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/verify-email?token=${verificationToken}`;
 
-    await sendEmail({
-      to: email,
-      subject: 'Verify your email',
-      html: `
-        <p>Hello ${firstName},</p>
-        <p>Please verify your email by clicking the link below:</p>
-        <p><a href="${verifyUrl}">Verify Email</a></p>
-      `
-    });
+    console.log('Sending verification email to:', email);
+
+    try {
+      await sendEmail({
+        to: email,
+        subject: 'Verify your email',
+        html: `
+          <p>Hello ${firstName},</p>
+          <p>Please verify your email by clicking the link below:</p>
+          <p><a href="${verifyUrl}">Verify Email</a></p>
+        `
+      });
+
+      console.log('Verification email sent to:', email);
+    } catch (emailError) {
+      console.error('Failed to send verification email to:', email);
+      console.error(emailError.message);
+
+      return res.status(500).json({
+        message: emailError.message || 'Failed to send verification email'
+      });
+    }
 
     res.json({
       message: 'Registration successful, please check your email for verification instructions'

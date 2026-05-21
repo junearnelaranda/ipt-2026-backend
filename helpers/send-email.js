@@ -1,43 +1,45 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+
+const EMAIL_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS || 15000);
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Email provider timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    })
+  ]);
+}
 
 async function sendEmail({ to, subject, html }) {
-  const port = Number(process.env.SMTP_PORT || 587);
-  const hasSmtpConfig = process.env.SMTP_HOST
-    && process.env.SMTP_USER
-    && process.env.SMTP_PASS
-    && process.env.EMAIL_FROM;
-
-  if (!hasSmtpConfig) {
-    console.log('Email skipped: SMTP settings are not configured');
-    console.log('Email to:', to);
-    console.log('Email subject:', subject);
-    return null;
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('RESEND_API_KEY is not configured');
   }
 
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    secure: port === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS
-    }
-  });
-
-  const info = await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html
-  });
-
-  console.log('Email sent:', info.messageId);
-
-  if (nodemailer.getTestMessageUrl(info)) {
-    console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+  if (!to || !subject || !html) {
+    throw new Error('Email to, subject, and html are required');
   }
 
-  return info;
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  const from = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
+  const { data, error } = await withTimeout(
+    resend.emails.send({
+      from,
+      to,
+      subject,
+      html
+    }),
+    EMAIL_TIMEOUT_MS
+  );
+
+  if (error) {
+    throw new Error(error.message || 'Failed to send email with Resend');
+  }
+
+  return data;
 }
 
 module.exports = sendEmail;

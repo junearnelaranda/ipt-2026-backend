@@ -13,8 +13,7 @@ const app = express();
 const port = process.env.PORT || 4000;
 
 app.use(cors({
-  // This MUST be your exact Render URL
-  origin: 'https://ipt-2026-frontend-3nao.onrender.com',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:4200',
   credentials: true
 }));
 

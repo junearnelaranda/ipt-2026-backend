@@ -14,7 +14,7 @@ Node.js + MySQL backend API for the IPT 2026 final project.
 - MySQL
 - JWT
 - Refresh token cookies
-- Nodemailer
+- Resend
 - Swagger
 
 ## Local Setup
