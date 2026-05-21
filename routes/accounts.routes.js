@@ -392,6 +392,10 @@ function basicDetails(account) {
   };
 }
 
+function getFrontendUrl() {
+  return (process.env.FRONTEND_URL || process.env.CORS_ORIGIN || '').replace(/\/$/, '');
+}
+
 router.post('/register', async (req, res, next) => {
   try {
     const { title, firstName, lastName, email, password } = req.body;
@@ -427,7 +431,7 @@ router.post('/register', async (req, res, next) => {
       verificationToken
     });
 
-    const verifyUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/verify-email?token=${verificationToken}`;
+    const verifyUrl = `${getFrontendUrl()}/account/verify-email?token=${verificationToken}`;
 
     console.log('Sending verification email to:', email);
 
@@ -590,7 +594,7 @@ router.post('/forgot-password', async (req, res, next) => {
 
       await accountModel.saveResetToken(account.id, resetToken, resetTokenExpires);
 
-      const resetUrl = `${process.env.FRONTEND_URL || process.env.CORS_ORIGIN}/account/reset-password?token=${resetToken}`;
+      const resetUrl = `${getFrontendUrl()}/account/reset-password?token=${resetToken}`;
 
       await sendEmail({
         to: account.email,
@@ -599,6 +603,8 @@ router.post('/forgot-password', async (req, res, next) => {
           <p>Hello ${account.firstName},</p>
           <p>Please reset your password by clicking the link below:</p>
           <p><a href="${resetUrl}">Reset Password</a></p>
+          <p>If the button does not work, copy and paste this URL into your browser:</p>
+          <p>${resetUrl}</p>
         `
       });
     }
@@ -613,7 +619,7 @@ router.post('/forgot-password', async (req, res, next) => {
 
 router.post('/validate-reset-token', async (req, res, next) => {
   try {
-    const { token } = req.body;
+    const token = req.body.token || req.query.token;
     const tokenInfo = token
       ? `${String(token).slice(0, 6)}... (${String(token).length} chars)`
       : 'missing';
@@ -641,7 +647,8 @@ router.post('/validate-reset-token', async (req, res, next) => {
 
 router.post('/reset-password', async (req, res, next) => {
   try {
-    const { token, password } = req.body;
+    const token = req.body.token || req.query.token;
+    const { password } = req.body;
 
     if (!token) {
       return res.status(400).json({ message: 'Invalid token' });
